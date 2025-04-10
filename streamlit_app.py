@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import sys
-from chatbot import initialize_chatbot, process_query
+import traceback
 
 # Set page configuration
 st.set_page_config(
@@ -42,10 +42,24 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Initialize session state for chatbot
+if "chatbot" not in st.session_state:
+    st.session_state.chatbot = None
+
 # Initialize the chatbot
 @st.cache_resource
 def load_chatbot():
-    return initialize_chatbot()
+    try:
+        from chatbot import initialize_chatbot, process_query
+        chatbot = initialize_chatbot()
+        if chatbot is None:
+            st.error("Failed to initialize the chatbot. Please check the console for errors.")
+            return None, None
+        return chatbot, process_query
+    except Exception as e:
+        st.error(f"Error loading chatbot: {str(e)}")
+        st.code(traceback.format_exc())
+        return None, None
 
 # Main app
 def main():
@@ -55,8 +69,17 @@ def main():
     Ask any question about gprMax and I'll try to find the answer in the documentation.
     """)
     
-    # Initialize the chatbot
-    chatbot = load_chatbot()
+    # Initialize the chatbot if not already done
+    if st.session_state.chatbot is None:
+        with st.spinner("Initializing chatbot..."):
+            chatbot, process_query_func = load_chatbot()
+            if chatbot is not None:
+                st.session_state.chatbot = chatbot
+                st.session_state.process_query = process_query_func
+                st.success("Chatbot initialized successfully!")
+            else:
+                st.error("Failed to initialize chatbot. Please check the console for errors.")
+                return
     
     # Display chat history
     for message in st.session_state.messages:
@@ -75,8 +98,13 @@ def main():
         # Get bot response
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = process_query(chatbot, prompt)
-                st.markdown(response)
+                try:
+                    response = st.session_state.process_query(st.session_state.chatbot, prompt)
+                    st.markdown(response)
+                except Exception as e:
+                    error_message = f"Error processing query: {str(e)}"
+                    st.error(error_message)
+                    response = error_message
         
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response})

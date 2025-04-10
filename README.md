@@ -8,8 +8,31 @@ A Streamlit-based chatbot that answers questions about gprMax documentation usin
 - RAG-based question answering using gprMax documentation
 - Persistent vector database for efficient retrieval
 - Reranking of retrieved documents for better relevance
+- Fallback mechanism for environments where ChromaDB is not available
 
 ## Setup
+
+### Option 1: Using the setup script (recommended)
+
+1. Clone this repository:
+
+   ```
+   git clone <repository-url>
+   cd gprmax_rag
+   ```
+
+2. Run the setup script:
+
+   ```
+   python setup.py
+   ```
+
+3. Run the Streamlit app:
+   ```
+   streamlit run streamlit_app.py
+   ```
+
+### Option 2: Manual setup
 
 1. Clone this repository:
 
@@ -50,11 +73,20 @@ A Streamlit-based chatbot that answers questions about gprMax documentation usin
    - Reranks the retrieved chunks for better relevance
    - Uses the retrieved context to generate a comprehensive answer
 
+## Fallback Mechanism
+
+The chatbot includes a fallback mechanism for environments where ChromaDB is not available or encounters issues:
+
+- If ChromaDB initialization fails, the app will automatically switch to an in-memory storage solution
+- If the PDF file is not found, the app will use dummy data for testing
+- These fallbacks ensure the app can still run and demonstrate functionality even in limited environments
+
 ## Troubleshooting
 
 - If you encounter any issues with the OpenAI API, make sure your API key is correctly set in the code.
 - If the chatbot fails to initialize, check that the PDF file exists and is readable.
 - For any other issues, check the console output for error messages.
+- If you see ChromaDB-related errors, the app should automatically fall back to in-memory storage.
 
 ## License
 

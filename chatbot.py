@@ -3,13 +3,12 @@ import re
 import requests
 from urllib.parse import urljoin
 from sentence_transformers import SentenceTransformer,models, CrossEncoder
-import chromadb
+import os
 from langchain import hub
 from typing_extensions import List, TypedDict
 from langchain_core.documents import Document
 import openai
 from langgraph.graph import START, StateGraph
-import os
 from langchain_community.document_loaders import PyPDFLoader
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -17,20 +16,65 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Remove or comment out this line
 # embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Initialize ChromaDB client
-db_client = chromadb.PersistentClient(path="./chroma_db")
-# Check if collection exists
-try:
-    collection = db_client.get_collection(name="gprMax_docs")
-    print("Using existing collection")
-except:
-    collection = db_client.create_collection(name="gprMax_docs")
-    print("Created new collection")
-
-# Initialize other components
+# Initialize components
 prompt = hub.pull('rlm/rag-prompt')
 chat_client = openai.OpenAI(api_key="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")
 reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+
+# Initialize ChromaDB with error handling
+try:
+    import chromadb
+    db_client = chromadb.PersistentClient(path="./chroma_db")
+    # Check if collection exists
+    try:
+        collection = db_client.get_collection(name="gprMax_docs")
+        print("Using existing collection")
+    except:
+        collection = db_client.create_collection(name="gprMax_docs")
+        print("Created new collection")
+    CHROMA_AVAILABLE = True
+except Exception as e:
+    print(f"Warning: ChromaDB initialization failed: {e}")
+    print("Falling back to in-memory storage")
+    CHROMA_AVAILABLE = False
+    # Create a simple in-memory storage as fallback
+    class SimpleStorage:
+        def __init__(self):
+            self.data = []
+            self.embeddings = []
+            self.metadata = []
+        
+        def add(self, embeddings, metadatas, ids):
+            self.embeddings.extend(embeddings)
+            self.metadata.extend(metadatas)
+            self.data.extend(ids)
+        
+        def query(self, query_embeddings, n_results=10):
+            # Simple cosine similarity search
+            results = []
+            for i, query_embedding in enumerate(query_embeddings):
+                similarities = []
+                for j, embedding in enumerate(self.embeddings):
+                    # Simple dot product as similarity
+                    similarity = sum(a * b for a, b in zip(query_embedding, embedding))
+                    similarities.append((j, similarity))
+                
+                # Sort by similarity
+                similarities.sort(key=lambda x: x[1], reverse=True)
+                top_indices = [idx for idx, _ in similarities[:n_results]]
+                
+                results.append({
+                    "ids": [self.data[idx] for idx in top_indices],
+                    "metadatas": [[self.metadata[idx]] for idx in top_indices],
+                    "distances": [1 - sim for _, sim in similarities[:n_results]]
+                })
+            
+            return results
+        
+        def count(self):
+            return len(self.data)
+    
+    collection = SimpleStorage()
 
 class State(TypedDict):
     question: str
@@ -258,69 +302,80 @@ def initialize_chatbot():
     # Check if we need to load and process the PDF
     if collection.count() == 0:
         print("No documents in collection. Loading PDF...")
-        pdf_loader = PyPDFLoader("docs-gprmax-com-en-latest.pdf")
-        pages_data = pdf_loader.load()
-        
-        # Add additional metadata to each page
-        for i, page in enumerate(pages_data):
-            page.metadata.update({
-                "source": "docs-gprmax-com-en-latest.pdf",
-                "page_number": i + 1,
-                "total_pages": len(pages_data),
-                "document_type": "gprMax Documentation"
-            })
-        
-        # Process each page and create meaningful chunks
-        pages_chunks = []
-        for page in pages_data:
-            chunks = chunk_text(page.page_content, chunk_size=200)  # Larger chunks ##PDF
-            if chunks:
-                for chunk in chunks:
-                    if len(chunk) > 50:  # Only keep meaningful chunks
-                        # Create a new Document for each chunk with the page's metadata
-                        chunk_doc = { 'page_content':chunk, 'metadata':page.metadata.copy() }
-                        pages_chunks.append(chunk_doc)
-            else:
-                print(f"No valid chunks for page: {page.metadata.get('page_number', '')}")
-        
-        print(f"Created {len(pages_chunks)} chunks from {len(pages_data)} pages")
-        
-        # Exit if no valid chunks
-        if not pages_chunks:
-            print("Error: No valid chunks to process. Check your content extraction.")
-            return None
-        
-        # Get the chunks and sources
-        chunk_texts = [item["page_content"] for item in pages_chunks]
-        sources = [item["metadata"]["source"] for item in pages_chunks]
-        
-        # Process in smaller batches
-        print("Generating embeddings with OpenAI ada-002...")
-        batch_size = 5  # Much smaller batch size
-        all_embeddings = []
-        valid_chunks = []
-        valid_sources = []
-        
-        for i in range(0, len(chunk_texts), batch_size):
-            batch = chunk_texts[i:i+batch_size]
-            batch_sources = sources[i:i+batch_size]
-            print(f"Processing batch {i//batch_size + 1}/{(len(chunk_texts) + batch_size - 1)//batch_size}")
+        try:
+            pdf_loader = PyPDFLoader("docs-gprmax-com-en-latest.pdf")
+            pages_data = pdf_loader.load()
             
-            batch_embeddings = get_embeddings(batch)
-            if batch_embeddings:
-                all_embeddings.extend(batch_embeddings)
-                valid_chunks.extend(batch)
-                valid_sources.extend(batch_sources)
+            # Add additional metadata to each page
+            for i, page in enumerate(pages_data):
+                page.metadata.update({
+                    "source": "docs-gprmax-com-en-latest.pdf",
+                    "page_number": i + 1,
+                    "total_pages": len(pages_data),
+                    "document_type": "gprMax Documentation"
+                })
+            
+            # Process each page and create meaningful chunks
+            pages_chunks = []
+            for page in pages_data:
+                chunks = chunk_text(page.page_content, chunk_size=200)  # Larger chunks ##PDF
+                if chunks:
+                    for chunk in chunks:
+                        if len(chunk) > 50:  # Only keep meaningful chunks
+                            # Create a new Document for each chunk with the page's metadata
+                            chunk_doc = { 'page_content':chunk, 'metadata':page.metadata.copy() }
+                            pages_chunks.append(chunk_doc)
+                else:
+                    print(f"No valid chunks for page: {page.metadata.get('page_number', '')}")
+            
+            print(f"Created {len(pages_chunks)} chunks from {len(pages_data)} pages")
+            
+            # Exit if no valid chunks
+            if not pages_chunks:
+                print("Error: No valid chunks to process. Check your content extraction.")
+                return None
+            
+            # Get the chunks and sources
+            chunk_texts = [item["page_content"] for item in pages_chunks]
+            sources = [item["metadata"]["source"] for item in pages_chunks]
+            
+            # Process in smaller batches
+            print("Generating embeddings with OpenAI ada-002...")
+            batch_size = 5  # Much smaller batch size
+            all_embeddings = []
+            valid_chunks = []
+            valid_sources = []
+            
+            for i in range(0, len(chunk_texts), batch_size):
+                batch = chunk_texts[i:i+batch_size]
+                batch_sources = sources[i:i+batch_size]
+                print(f"Processing batch {i//batch_size + 1}/{(len(chunk_texts) + batch_size - 1)//batch_size}")
+                
+                batch_embeddings = get_embeddings(batch)
+                if batch_embeddings:
+                    all_embeddings.extend(batch_embeddings)
+                    valid_chunks.extend(batch)
+                    valid_sources.extend(batch_sources)
+                else:
+                    print(f"Failed to get embeddings for batch {i//batch_size + 1}")
+            
+            # Final check and save
+            if all_embeddings:
+                print(f"Successfully embedded {len(all_embeddings)} chunks out of {len(chunk_texts)}")
+                store_embeddings(chunks=valid_chunks, embeddings=all_embeddings, sources=valid_sources)
             else:
-                print(f"Failed to get embeddings for batch {i//batch_size + 1}")
-        
-        # Final check and save
-        if all_embeddings:
-            print(f"Successfully embedded {len(all_embeddings)} chunks out of {len(chunk_texts)}")
-            store_embeddings(chunks=valid_chunks, embeddings=all_embeddings, sources=valid_sources)
-        else:
-            print("Failed to generate any valid embeddings.")
-            return None
+                print("Failed to generate any valid embeddings.")
+                return None
+        except Exception as e:
+            print(f"Error processing PDF: {e}")
+            # Create some dummy data for testing
+            print("Creating dummy data for testing...")
+            dummy_text = "gprMax is a software package for simulating Ground Penetrating Radar (GPR). It uses the Finite-Difference Time-Domain (FDTD) method to simulate electromagnetic wave propagation."
+            collection.add(
+                embeddings=[[0.1] * 1536],  # Dummy embedding
+                metadatas=[{"text": dummy_text, "source": "dummy.pdf"}],
+                ids=["dummy_1"]
+            )
     
     # Build and compile the graph
     graph_builder = StateGraph(State).add_sequence([retrieve, generate_response])
