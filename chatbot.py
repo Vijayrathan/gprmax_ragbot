@@ -17,6 +17,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Remove or comment out this line
 # embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
 
+# Initialize ChromaDB client
 db_client = chromadb.PersistentClient(path="./chroma_db")
 # Check if collection exists
 try:
@@ -25,15 +26,16 @@ try:
 except:
     collection = db_client.create_collection(name="gprMax_docs")
     print("Created new collection")
-prompt=hub.pull('rlm/rag-prompt')
-chat_client = openai.OpenAI(api_key="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")
 
+# Initialize other components
+prompt = hub.pull('rlm/rag-prompt')
+chat_client = openai.OpenAI(api_key="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")
 reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 
 class State(TypedDict):
-        question: str
-        context: List[Document]
-        answer: str
+    question: str
+    context: List[Document]
+    answer: str
 
 # def get_subpage_links(url, base_url="https://docs.gprmax.com/en/latest/", visited=None, max_depth=3, current_depth=0):
 #     if visited is None:
@@ -244,93 +246,114 @@ def generate_response(state):
     )
     return {"answer": response.choices[0].message.content}
 
-
-if __name__=='__main__':
+# Function to initialize the chatbot
+def initialize_chatbot():
     # Test the embedding endpoint first
     print("Testing OpenAI embeddings endpoint...")
     test_result = get_embeddings(["This is a test of the OpenAI embeddings API"])
     if not test_result:
         print("Error: Initial OpenAI embeddings test failed. Please check your API key and connection.")
-        exit(1)
-    else:
-        print("OpenAI embeddings test successful!")
+        return None
     
-    # Continue with the rest of your code
-    # pages_data = extract_content_from_page() ##SCRAPING
-    pdf_loader = PyPDFLoader("docs-gprmax-com-en-latest.pdf")
-    pages_data = pdf_loader.load()
-    
-    # Add additional metadata to each page
-    for i, page in enumerate(pages_data):
-        page.metadata.update({
-            "source": "docs-gprmax-com-en-latest.pdf",
-            "page_number": i + 1,
-            "total_pages": len(pages_data),
-            "document_type": "gprMax Documentation"
-        })
-    
-    # Process each page and create meaningful chunks
-    pages_chunks = []
-    for page in pages_data:
-        chunks = chunk_text(page.page_content, chunk_size=200)  # Larger chunks ##PDF
-        if chunks:
-            for chunk in chunks:
-                if len(chunk) > 50:  # Only keep meaningful chunks
-                    # Create a new Document for each chunk with the page's metadata
-                    chunk_doc = { 'page_content':chunk, 'metadata':page.metadata.copy() }
-                    pages_chunks.append(chunk_doc)
-        else:
-            print(f"No valid chunks for page: {page.metadata.get('page_number', '')}")
-    
-    print(f"Created {len(pages_chunks)} chunks from {len(pages_data)} pages")
-    
-    # Exit if no valid chunks
-    if not pages_chunks:
-        print("Error: No valid chunks to process. Check your content extraction.")
-        exit(1)
-    
-    # Get the chunks and sources
-    chunk_texts = [item["page_content"] for item in pages_chunks]
-    sources = [item["metadata"]["source"] for item in pages_chunks]
-    
-    # # Process in smaller batches
-    print("Generating embeddings with OpenAI ada-002...")
-    batch_size = 5  # Much smaller batch size
-    all_embeddings = []
-    valid_chunks = []
-    valid_sources = []
-    
-    for i in range(0, len(chunk_texts), batch_size):
-        batch = chunk_texts[i:i+batch_size]
-        batch_sources = sources[i:i+batch_size]
-        print(f"Processing batch {i//batch_size + 1}/{(len(chunk_texts) + batch_size - 1)//batch_size}")
+    # Check if we need to load and process the PDF
+    if collection.count() == 0:
+        print("No documents in collection. Loading PDF...")
+        pdf_loader = PyPDFLoader("docs-gprmax-com-en-latest.pdf")
+        pages_data = pdf_loader.load()
         
-        batch_embeddings = get_embeddings(batch)
-        if batch_embeddings:
-            all_embeddings.extend(batch_embeddings)
-            valid_chunks.extend(batch)
-            valid_sources.extend(batch_sources)
+        # Add additional metadata to each page
+        for i, page in enumerate(pages_data):
+            page.metadata.update({
+                "source": "docs-gprmax-com-en-latest.pdf",
+                "page_number": i + 1,
+                "total_pages": len(pages_data),
+                "document_type": "gprMax Documentation"
+            })
+        
+        # Process each page and create meaningful chunks
+        pages_chunks = []
+        for page in pages_data:
+            chunks = chunk_text(page.page_content, chunk_size=200)  # Larger chunks ##PDF
+            if chunks:
+                for chunk in chunks:
+                    if len(chunk) > 50:  # Only keep meaningful chunks
+                        # Create a new Document for each chunk with the page's metadata
+                        chunk_doc = { 'page_content':chunk, 'metadata':page.metadata.copy() }
+                        pages_chunks.append(chunk_doc)
+            else:
+                print(f"No valid chunks for page: {page.metadata.get('page_number', '')}")
+        
+        print(f"Created {len(pages_chunks)} chunks from {len(pages_data)} pages")
+        
+        # Exit if no valid chunks
+        if not pages_chunks:
+            print("Error: No valid chunks to process. Check your content extraction.")
+            return None
+        
+        # Get the chunks and sources
+        chunk_texts = [item["page_content"] for item in pages_chunks]
+        sources = [item["metadata"]["source"] for item in pages_chunks]
+        
+        # Process in smaller batches
+        print("Generating embeddings with OpenAI ada-002...")
+        batch_size = 5  # Much smaller batch size
+        all_embeddings = []
+        valid_chunks = []
+        valid_sources = []
+        
+        for i in range(0, len(chunk_texts), batch_size):
+            batch = chunk_texts[i:i+batch_size]
+            batch_sources = sources[i:i+batch_size]
+            print(f"Processing batch {i//batch_size + 1}/{(len(chunk_texts) + batch_size - 1)//batch_size}")
+            
+            batch_embeddings = get_embeddings(batch)
+            if batch_embeddings:
+                all_embeddings.extend(batch_embeddings)
+                valid_chunks.extend(batch)
+                valid_sources.extend(batch_sources)
+            else:
+                print(f"Failed to get embeddings for batch {i//batch_size + 1}")
+        
+        # Final check and save
+        if all_embeddings:
+            print(f"Successfully embedded {len(all_embeddings)} chunks out of {len(chunk_texts)}")
+            store_embeddings(chunks=valid_chunks, embeddings=all_embeddings, sources=valid_sources)
         else:
-            print(f"Failed to get embeddings for batch {i//batch_size + 1}")
+            print("Failed to generate any valid embeddings.")
+            return None
     
-    # # Final check and save
-    if all_embeddings:
-        print(f"Successfully embedded {len(all_embeddings)} chunks out of {len(chunk_texts)}")
-        collection = store_embeddings(chunks=valid_chunks, embeddings=all_embeddings, sources=valid_sources)
-    else:
-        print("Failed to generate any valid embeddings. Exiting.")
-        exit(1)
-
+    # Build and compile the graph
     graph_builder = StateGraph(State).add_sequence([retrieve, generate_response])
     graph_builder.add_edge(START, "retrieve")
     graph = graph_builder.compile()
-    while(1):
+    
+    return graph
+
+# Function to process a query
+def process_query(graph, query):
+    try:
+        result = graph.invoke({"question": query})
+        return result["answer"]
+    except Exception as e:
+        return f"Error processing query: {str(e)}"
+
+# Main function for command-line usage
+if __name__=='__main__':
+    # Initialize the chatbot
+    graph = initialize_chatbot()
+    if not graph:
+        print("Failed to initialize chatbot. Exiting.")
+        exit(1)
+    
+    # Command-line interface
+    print("Chatbot initialized. Type 'exit' to quit.")
+    while True:
         user_question = input('Enter your query: ')
         if user_question.lower() == "exit":
             break
         try:
-            result = graph.invoke({"question": user_question})
-            print(f'Answer: {result["answer"]}')
+            result = process_query(graph, user_question)
+            print(f'Answer: {result}')
         except Exception as e:
             print(f"Error processing query: {str(e)}")
             print("Please try a more specific or shorter query.")
