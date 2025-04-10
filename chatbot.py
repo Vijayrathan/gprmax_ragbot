@@ -25,6 +25,7 @@ reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 # Initialize ChromaDB with error handling
 try:
     import chromadb
+    # Initialize with minimal configuration
     db_client = chromadb.PersistentClient(path="./chroma_db")
     # Check if collection exists
     try:
