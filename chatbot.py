@@ -8,7 +8,8 @@ from langchain import hub
 from typing_extensions import List, TypedDict
 from langchain_core.documents import Document
 import openai
-from langgraph.graph import START, StateGraph
+from langgraph.graph import StateGraph
+# Remove the START import and use a string instead
 from langchain_community.document_loaders import PyPDFLoader
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -377,9 +378,9 @@ def initialize_chatbot():
                 ids=["dummy_1"]
             )
     
-    # Build and compile the graph
+    # Build and compile the graph - using a string instead of START
     graph_builder = StateGraph(State).add_sequence([retrieve, generate_response])
-    graph_builder.add_edge(START, "retrieve")
+    graph_builder.add_edge("__start__", "retrieve")  # Use string "__start__" instead of START
     graph = graph_builder.compile()
     
     return graph
