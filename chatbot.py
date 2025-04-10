@@ -25,8 +25,8 @@ reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 # Initialize ChromaDB with error handling
 try:
     import chromadb
-    # Initialize with minimal configuration
-    db_client = chromadb.PersistentClient(path="./chroma_db")
+    # Initialize with basic configuration without proxies
+    db_client = chromadb.Client()
     # Check if collection exists
     try:
         collection = db_client.get_collection(name="gprMax_docs")
