@@ -1,0 +1,10 @@
+bs4
+requests
+sentence-transformers
+chromadb
+langchain
+openai
+langgraph
+langchain-community
+typing_extensions
+pypdf
