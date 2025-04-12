@@ -23,7 +23,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Initialize components
 prompt = hub.pull('rlm/rag-prompt')
-chat_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+chat_client = openai.OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    # Remove any proxy settings if they exist
+)
 reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 
 # Initialize ChromaDB with error handling
