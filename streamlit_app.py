@@ -1,9 +1,11 @@
+import asyncio
 import streamlit as st
 import os
 import sys
 import traceback
 import openai
 from dotenv import load_dotenv
+import torch
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,6 +52,13 @@ if "messages" not in st.session_state:
 # Initialize session state for chatbot
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = None
+
+# Fix event loop issues
+if not asyncio.get_event_loop().is_running():
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+# Disable PyTorch JIT to avoid path issues
+torch.jit.script = lambda x: x
 
 # Initialize the chatbot
 @st.cache_resource
