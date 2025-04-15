@@ -57,7 +57,7 @@ if "openai_client" not in st.session_state:
     st.session_state.openai_client = openai.OpenAI(api_key=st.secrets["CHAT_TOKEN"])
 
 # Disable PyTorch JIT to avoid path issues
-torch.jit.script = lambda x: x
+# torch.jit.script = lambda x: x
 
 # Initialize the chatbot
 @st.cache_resource
