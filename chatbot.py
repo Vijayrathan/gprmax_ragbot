@@ -27,8 +27,7 @@ prompt = hub.pull('rlm/rag-prompt')
 # Initialize OpenAI client with error handling
 try:
     chat_client = openai.OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        timeout=30.0  # Add timeout
+        api_key=os.environ['api_key'],
     )
 except Exception as e:
     print(f"Error initializing OpenAI client: {e}")
