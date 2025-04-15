@@ -403,7 +403,13 @@ def initialize_chatbot():
 def process_query(graph, query):
     try:
         result = graph.invoke({"question": query})
-        return result["answer"]
+        # Safely access the answer from the result
+        if isinstance(result, dict) and "answer" in result:
+            return result["answer"]
+        elif isinstance(result, str):
+            return result
+        else:
+            return str(result)  # Convert any other result type to string
     except Exception as e:
         return f"Error processing query: {str(e)}"
 
