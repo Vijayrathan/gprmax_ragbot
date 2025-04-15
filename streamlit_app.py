@@ -53,9 +53,6 @@ if "messages" not in st.session_state:
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = None
 
-# Fix event loop issues
-if not asyncio.get_event_loop().is_running():
-    asyncio.set_event_loop(asyncio.new_event_loop())
 
 # Disable PyTorch JIT to avoid path issues
 torch.jit.script = lambda x: x
