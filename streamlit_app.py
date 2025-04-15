@@ -1,4 +1,3 @@
-
 import streamlit as st
 import os
 import sys
@@ -53,6 +52,9 @@ if "messages" not in st.session_state:
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = None
 
+# Initialize OpenAI client
+if "openai_client" not in st.session_state:
+    st.session_state.openai_client = openai.OpenAI(api_key=st.secrets["CHAT_TOKEN"])
 
 # Disable PyTorch JIT to avoid path issues
 torch.jit.script = lambda x: x
@@ -110,8 +112,6 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    # In Streamlit, use st.secrets instead of environment variables
-                    chat_client = openai.OpenAI(api_key=st.secrets["CHAT_TOKEN"])
                     response = st.session_state.process_query(st.session_state.chatbot, prompt)
                     st.markdown(response)
                 except Exception as e:
