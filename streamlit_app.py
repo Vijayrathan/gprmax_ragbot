@@ -5,6 +5,7 @@ import traceback
 import openai
 from dotenv import load_dotenv
 import torch
+from typing import List, Dict, Any
 
 # Load environment variables from .env file
 load_dotenv()
@@ -111,11 +112,23 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    result = st.session_state.chatbot.invoke({"question": prompt})
-                    if isinstance(result, dict) and "answer" in result:
-                        response = result["answer"]
+                    # Initialize the state properly
+                    initial_state = {
+                        "question": prompt,
+                        "context": [],
+                        "answer": ""
+                    }
+                    result = st.session_state.chatbot.invoke(initial_state)
+                    
+                    # Handle the result based on its type
+                    if isinstance(result, dict):
+                        if "answer" in result:
+                            response = result["answer"]
+                        else:
+                            response = str(result)
                     else:
                         response = str(result)
+                        
                     st.markdown(response)
                 except Exception as e:
                     error_message = f"Error processing query: {str(e)}"
