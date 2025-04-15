@@ -8,6 +8,13 @@ import torch
 from typing import List, Dict, Any
 import asyncio
 
+# Disable PyTorch JIT and set environment variables before any other imports
+os.environ["PYTORCH_JIT"] = "0"
+torch._C._jit_set_nvfuser_enabled(False)
+torch._C._jit_set_profiling_executor(False)
+torch._C._jit_set_profiling_mode(False)
+torch.jit._state.disable()
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -57,9 +64,6 @@ if "chatbot" not in st.session_state:
 # Initialize OpenAI client
 if "openai_client" not in st.session_state:
     st.session_state.openai_client = openai.OpenAI(api_key=st.secrets["CHAT_TOKEN"])
-
-# Disable PyTorch JIT to avoid path issues
-torch.jit.script = lambda x: x
 
 # Initialize the chatbot
 @st.cache_resource
@@ -120,13 +124,6 @@ def main():
                         "answer": ""
                     }
                     
-                    # Run the graph invocation in a new event loop if needed
-                    try:
-                        loop = asyncio.get_running_loop()
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                    
                     result = st.session_state.chatbot.invoke(initial_state)
                     
                     # Handle the result based on its type
@@ -148,9 +145,4 @@ def main():
         st.session_state.messages.append({"role": "assistant", "content": response})
 
 if __name__ == "__main__":
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
     main()
