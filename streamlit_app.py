@@ -1,4 +1,4 @@
-import asyncio
+
 import streamlit as st
 import os
 import sys
@@ -111,7 +111,7 @@ def main():
             with st.spinner("Thinking..."):
                 try:
                     # In Streamlit, use st.secrets instead of environment variables
-                    chat_client = openai.OpenAI(api_key=st.secrets["openai"]["api_key"])
+                    chat_client = openai.OpenAI(api_key=st.secrets["CHAT_TOKEN"])
                     response = st.session_state.process_query(st.session_state.chatbot, prompt)
                     st.markdown(response)
                 except Exception as e:
