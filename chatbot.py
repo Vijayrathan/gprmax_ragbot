@@ -299,11 +299,18 @@ def generate_response(state):
         {"role": "system", "content": "You are a helpful AI assistant."},
         {"role": "user", "content": f'Context:\n{state["context"]}\n\nQuestion: {query}'}
     ]
-    response = chat_client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages
-    )
-    return {"answer": response.choices[0].message.content}
+    try:
+        response = chat_client.chat.completions.create(
+            model="gpt-4",
+            messages=messages
+        )
+        # Safely access the response content
+        if hasattr(response, 'choices') and len(response.choices) > 0:
+            if hasattr(response.choices[0], 'message') and hasattr(response.choices[0].message, 'content'):
+                return {"answer": response.choices[0].message.content}
+        return {"answer": "Sorry, I couldn't generate a response. Please try again."}
+    except Exception as e:
+        return {"answer": f"Error generating response: {str(e)}"}
 
 # Function to initialize the chatbot
 def initialize_chatbot():
