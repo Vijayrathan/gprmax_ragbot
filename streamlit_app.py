@@ -57,22 +57,22 @@ if "openai_client" not in st.session_state:
     st.session_state.openai_client = openai.OpenAI(api_key=st.secrets["CHAT_TOKEN"])
 
 # Disable PyTorch JIT to avoid path issues
-# torch.jit.script = lambda x: x
+torch.jit.script = lambda x: x
 
 # Initialize the chatbot
 @st.cache_resource
 def load_chatbot():
     try:
-        from chatbot import initialize_chatbot, process_query
-        chatbot = initialize_chatbot()
-        if chatbot is None:
+        from chatbot import initialize_chatbot
+        graph = initialize_chatbot()
+        if graph is None:
             st.error("Failed to initialize the chatbot. Please check the console for errors.")
-            return None, None
-        return chatbot, process_query
+            return None
+        return graph
     except Exception as e:
         st.error(f"Error loading chatbot: {str(e)}")
         st.code(traceback.format_exc())
-        return None, None
+        return None
 
 # Main app
 def main():
@@ -85,10 +85,9 @@ def main():
     # Initialize the chatbot if not already done
     if st.session_state.chatbot is None:
         with st.spinner("Initializing chatbot..."):
-            chatbot, process_query_func = load_chatbot()
-            if chatbot is not None:
-                st.session_state.chatbot = chatbot
-                st.session_state.process_query = process_query_func
+            graph = load_chatbot()
+            if graph is not None:
+                st.session_state.chatbot = graph
                 st.success("Chatbot initialized successfully!")
             else:
                 st.error("Failed to initialize chatbot. Please check the console for errors.")
@@ -112,7 +111,11 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    response = st.session_state.process_query(st.session_state.chatbot, prompt)
+                    result = st.session_state.chatbot.invoke({"question": prompt})
+                    if isinstance(result, dict) and "answer" in result:
+                        response = result["answer"]
+                    else:
+                        response = str(result)
                     st.markdown(response)
                 except Exception as e:
                     error_message = f"Error processing query: {str(e)}"
