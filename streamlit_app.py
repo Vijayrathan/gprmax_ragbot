@@ -4,16 +4,7 @@ import sys
 import traceback
 import openai
 from dotenv import load_dotenv
-import torch
 from typing import List, Dict, Any
-import asyncio
-
-# Disable PyTorch JIT and set environment variables before any other imports
-os.environ["PYTORCH_JIT"] = "0"
-torch._C._jit_set_nvfuser_enabled(False)
-torch._C._jit_set_profiling_executor(False)
-torch._C._jit_set_profiling_mode(False)
-torch.jit._state.disable()
 
 # Load environment variables from .env file
 load_dotenv()
@@ -69,6 +60,11 @@ if "openai_client" not in st.session_state:
 @st.cache_resource
 def load_chatbot():
     try:
+        # Import torch here to avoid early initialization
+        import torch
+        # Disable JIT after import
+        torch.jit._state.disable()
+        
         from chatbot import initialize_chatbot
         graph = initialize_chatbot()
         if graph is None:
