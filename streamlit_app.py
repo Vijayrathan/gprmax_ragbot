@@ -6,6 +6,7 @@ import openai
 from dotenv import load_dotenv
 import torch
 from typing import List, Dict, Any
+import asyncio
 
 # Load environment variables from .env file
 load_dotenv()
@@ -118,6 +119,14 @@ def main():
                         "context": [],
                         "answer": ""
                     }
+                    
+                    # Run the graph invocation in a new event loop if needed
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
                     result = st.session_state.chatbot.invoke(initial_state)
                     
                     # Handle the result based on its type
@@ -139,4 +148,9 @@ def main():
         st.session_state.messages.append({"role": "assistant", "content": response})
 
 if __name__ == "__main__":
-    main() 
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    main()
