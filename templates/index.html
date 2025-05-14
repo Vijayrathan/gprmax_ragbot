@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GPRMax Assistant - Ground Penetrating Radar Simulation Expert</title>
+    <meta
+      name="description"
+      content="GPRMax Assistant - Your expert guide for Ground Penetrating Radar simulations and the GPRMax software package."
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/favicon.png') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>GPRMax Assistant</h1>
+        <p>Your expert guide for Ground Penetrating Radar simulations</p>
+      </div>
+
+      <div class="chat-container">
+        <div class="chat-header">
+          <img
+            src="https://api.dicebear.com/7.x/bottts/svg?seed=gprmax"
+            alt="GPRMax Bot"
+          />
+          <h2>GPRMax Assistant</h2>
+        </div>
+
+        <div class="messages">
+          <!-- Messages will be added here by JavaScript -->
+        </div>
+
+        <div class="input-area">
+          <input
+            type="text"
+            class="message-input"
+            placeholder="Ask a question about GPRMax..."
+          />
+          <button class="send-button">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>Powered by SoilX Team</p>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>
