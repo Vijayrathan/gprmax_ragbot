@@ -92,7 +92,7 @@ body {
 }
 
 .message {
-  max-width: 70%;
+  max-width: 85%;
   padding: 15px;
   border-radius: 12px;
   line-height: 1.5;
@@ -159,6 +159,11 @@ body {
   font-size: 1rem;
   color: var(--dark);
   transition: all 0.3s ease;
+  resize: none;
+  max-height: 150px;
+  overflow-y: auto;
+  line-height: 1.4;
+  font-family: inherit;
 }
 
 .message-input:focus {
@@ -233,4 +238,88 @@ body {
   .header h1 {
     font-size: 2rem;
   }
+}
+
+.message-content {
+  width: 100%;
+}
+
+.code-block-container {
+  margin: 10px 0;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.code-block {
+  margin: 0;
+  padding: 15px;
+  color: #d4d4d4;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.download-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.download-button:hover {
+  background-color: var(--secondary);
+  transform: translateY(-2px);
+}
+
+.download-button i {
+  font-size: 1rem;
+}
+
+.user .message-content p {
+  color: white;
+}
+
+.bot .message-content p {
+  color: var(--dark);
+}
+
+.mode-switcher {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  padding: 0 20px;
+}
+
+.mode-button {
+  padding: 8px 16px;
+  border: 2px solid #4a90e2;
+  border-radius: 20px;
+  background: transparent;
+  color: #4a90e2;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-button:hover {
+  background: rgba(74, 144, 226, 0.1);
+}
+
+.mode-button.active {
+  background: #4a90e2;
+  color: white;
 }

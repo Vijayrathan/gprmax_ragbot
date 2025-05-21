@@ -40,6 +40,12 @@
             alt="GPRMax Bot"
           />
           <h2>GPRMax Assistant</h2>
+          <div class="mode-switcher">
+            <button class="mode-button" data-mode="qa">Q&A Mode</button>
+            <button class="mode-button" data-mode="simulation">
+              Simulation Mode
+            </button>
+          </div>
         </div>
 
         <div class="messages">
@@ -47,11 +53,11 @@
         </div>
 
         <div class="input-area">
-          <input
-            type="text"
+          <textarea
             class="message-input"
             placeholder="Ask a question about GPRMax..."
-          />
+            rows="1"
+          ></textarea>
           <button class="send-button">
             <i class="fas fa-paper-plane"></i>
           </button>
